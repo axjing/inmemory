@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Orchestrator Architecture</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* 全局样式重置与基础设置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft Yahei", "PingFang SC", sans-serif;
+        }
+
+        /* 页面背景渐变（极深黑→纯黑） */
+        body {
+            background: linear-gradient(180deg, #0a0a0a 0%, #121212 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+            color: #e0e0e0;
+            line-height: 1.8;
+            letter-spacing: 0.5px;
+            overflow-x: hidden;
+        }
+
+        /* 主容器：VS Code黑色主题背景+顶部渐变装饰条 */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: #1e1e1e;
+            padding: 40px;
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+        }
+
+        /* 顶部渐变装饰条（中式设计感） */
+        .container::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #61a0ff, #ff6b6b, #ff9500, #4cd964);
+        }
+
+        /* 根代理（核心中枢）- 顶部通栏 */
+        .root-agent {
+            text-align: center;
+            padding: 30px;
+            background: #242424;
+            border-radius: 8px;
+            border: 1px solid #2d2d2d;
+            margin-bottom: 60px;
+            position: relative;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        /* 根代理装饰：底部放射状线条（连接下游代理） */
+        .root-agent::after {
+            content: "";
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #61a0ff, transparent);
+            z-index: 1;
+        }
+
+        .root-agent h1 {
+            color: #61a0ff; /* 道-蓝色系 */
+            font-size: 2.2rem;
+            position: relative;
+            display: inline-block;
+            padding-bottom: 10px;
+        }
+
+        /* 标题装饰线 */
+        .root-agent h1::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 10%;
+            width: 80%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #61a0ff, transparent);
+        }
+
+        .root-agent p {
+            color: #d0d0d0;
+            margin-top: 15px;
+            font-size: 1.1rem;
+        }
+
+        /* 功能代理容器：放射式三栏 + 视觉连线 */
+        .agents-container {
+            position: relative;
+            margin-bottom: 60px;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeInUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.3s forwards;
+        }
+
+        /* 代理间视觉连线（强化调度关系） */
+        .agents-container::before {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #2d2d2d;
+            z-index: 0;
+        }
+
+        /* 三栏网格布局（带间距） */
+        .agents-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* 卡片样式：深灰背景+角落渐变纹理 */
+        .agent-card {
+            background: #242424;
+            padding: 30px;
+            border-radius: 8px;
+            border: 1px solid #2d2d2d;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 卡片角落渐变纹理（精致度提升） */
+        .agent-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, rgba(97, 160, 255, 0.05), transparent);
+            border-radius: 0 0 0 100%;
+            z-index: 0;
+        }
+
+        /* 卡片hover交互：背景提亮+阴影加深+轻微上浮 */
+        .agent-card:hover {
+            background: #282828;
+            transform: translateY(-8px);
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 卡片标题区 */
+        .agent-card h2 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 不同代理的主题色（道/法/术） */
+        .ingest-agent h2 {
+            color: #ff6b6b; /* 法-珊瑚红 */
+        }
+        .consolidate-agent h2 {
+            color: #ff9500; /* 术-橙黄色 */
+        }
+        .query-agent h2 {
+            color: #4cd964; /* 器-青绿色 */
+        }
+
+        /* 标题图标 */
+        .agent-card h2 i {
+            font-size: 1.8rem;
+        }
+
+        /* 卡片列表项 */
+        .agent-card ul {
+            list-style: none;
+            position: relative;
+            z-index: 1;
+        }
+
+        .agent-card li {
+            padding: 8px 0;
+            color: #d0d0d0;
+            transition: color 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+            padding-left: 20px;
+            position: relative;
+        }
+
+        /* 列表项前缀装饰 */
+        .agent-card li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: inherit;
+            font-size: 1.5rem;
+            line-height: 1;
+        }
+
+        /* 列表项hover：主题蓝高亮 */
+        .agent-card li:hover {
+            color: #61a0ff;
+        }
+
+        /* 存储层卡片：通栏布局 */
+        .storage-layer {
+            background: #242424;
+            padding: 30px;
+            border-radius: 8px;
+            border: 1px solid #2d2d2d;
+            text-align: center;
+            position: relative;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+            animation: fadeInUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.6s forwards;
+        }
+
+        /* 存储层顶部连线（承接上游代理） */
+        .storage-layer::before {
+            content: "";
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #4cd964, transparent);
+            z-index: 1;
+        }
+
+        .storage-layer:hover {
+            background: #282828;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .storage-layer h2 {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: #61a0ff;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+
+        .storage-layer p {
+            color: #d0d0d0;
+            font-size: 1.1rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* 滚动渐显动画 */
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 响应式适配：小屏幕改为单列 */
+        @media (max-width: 992px) {
+            .agents-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            /* 移动端隐藏连线，简化视觉 */
+            .root-agent::after, .agents-container::before, .storage-layer::before {
+                display: none;
+            }
+            .root-agent {
+                margin-bottom: 30px;
+            }
+            .agents-container {
+                margin-bottom: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 根代理（核心中枢）- 顶部通栏 -->
+        <div class="root-agent">
+            <h1><i class="fas fa-compass"></i> Memory Orchestrator (Root Agent)</h1>
+            <p>系统核心中枢，统一调度所有功能代理的工作流程</p>
+        </div>
+
+        <!-- 功能代理容器（放射式三栏） -->
+        <div class="agents-container">
+            <div class="agents-grid">
+                <!-- 摄入代理 -->
+                <div class="agent-card ingest-agent">
+                    <h2><i class="fas fa-book-open"></i> Ingest Agent</h2>
+                    <ul>
+                        <li>Summarize（内容总结）</li>
+                        <li>Extract entities（实体提取）</li>
+                        <li>Tag topics（主题打标）</li>
+                    </ul>
+                </div>
+
+                <!-- 整合代理 -->
+                <div class="agent-card consolidate-agent">
+                    <h2><i class="fas fa-puzzle-piece"></i> Consolidate Agent</h2>
+                    <ul>
+                        <li>Find patterns（发现模式）</li>
+                        <li>Merge related memories（合并相关记忆）</li>
+                    </ul>
+                </div>
+
+                <!-- 查询代理 -->
+                <div class="agent-card query-agent">
+                    <h2><i class="fas fa-search"></i> Query Agent</h2>
+                    <ul>
+                        <li>Search memories（搜索记忆）</li>
+                        <li>Synthesize answers（合成答案）</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据存储层（底部通栏） -->
+        <div class="storage-layer">
+            <h2><i class="fas fa-database"></i> SQLite DB (memory.db)</h2>
+            <p>所有记忆数据的统一持久化存储介质，承接Ingest、Consolidate、Query代理的处理结果，为整个系统提供数据支撑</p>
+        </div>
+    </div>
+
+    <script>
+        // 滚动增强：页面滚动时强化元素显隐（适配长页面）
+        window.addEventListener('scroll', function() {
+            const elements = document.querySelectorAll('.root-agent, .agents-container, .storage-layer');
+            elements.forEach(el => {
+                const rect = el.getBoundingClientRect();
+                const isInView = rect.top < window.innerHeight - 100;
+                if (isInView) {
+                    el.style.opacity = 1;
+                    el.style.transform = 'translateY(0)';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
