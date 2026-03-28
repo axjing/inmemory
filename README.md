@@ -1,10 +1,17 @@
 # 常驻记忆智能体
 
+# Inspire
+
+项目灵感来源于:[google](<https://github.com/GoogleCloudPlatform/generative-ai/tree/main/gemini/agents/always-on-memory-agent>)的关于AI Agent memory的项目,主要为了解决如下问题:
+
 **一款基于llm 极速轻量版 构建的全天候 AI 记忆智能体**
 
 大多数 AI 智能体都存在“失忆”问题。它们只在被调用时处理信息，之后便会彻底遗忘。本项目为智能体赋予**持久、可进化**的记忆能力，以轻量级后台进程**24 小时不间断运行**，持续对信息做处理、整合与关联。
 
 无需向量数据库，无需嵌入向量。只靠一个大模型，就能读取、思考并写入结构化记忆。支持中英文等多种语言。
+
+**这种memory存储的方法我认为非常好,但是其仅能使用google gemini相关的api,无法使用其他的LLM模型,我对齐进行了模型扩展**
+**目前还有一些不完善的地方,欢迎大家PR贡献!!!**
 
 ## 现存问题
 
